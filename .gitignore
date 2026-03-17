@@ -10,9 +10,7 @@ poetry.lock
 
 # === Datos (Privacidad y Cómputo) ===
 # Ignoramos todo el contenido de data para no subir archivos pesados o sensibles
-data/data_extraida/*
 data/data_procesada/*
-data/pdf_originales/*
 # Pero permitimos que las carpetas existan en el repo (opcional)
 !data/.gitkeep
 
