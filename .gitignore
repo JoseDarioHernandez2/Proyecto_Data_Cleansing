@@ -24,9 +24,3 @@ cuadernos/.ipynb_checkpoints/
 poetry.toml
 
 # === Archivos de salida comunes ===
-*.pdf
-*.csv
-*.xlsx
-*.png
-*.jpg
-*.jpeg
