@@ -1,55 +1,166 @@
-import pandas as pd
-import numpy as np
+import re
 
-# Función para extraer datos de la matriz y convertirlos en un diccionario (extraer del PDF)
-def transformar_a_diccionario(matriz_datos):
+# 🔹 Estructura oficial del dataset
+CAMPOS = [
+    "Entidad avaluadora", "ID avaluo", "Perito",
+    "Nombre solicitante", "ID solicitante", "Fecha avaluo",
+    "Departamento", "Ciudad", "Codigo DANE", "Direccion",
+    "Nombre edificio", "Barrio", "Estrato", "Tipo inmueble",
+    "Año construccion", "Vetustez", "Piso numero",
+    "Total Sala comedor", "Total habitaciones", "Total estudio",
+    "Total baños", "Total patios", "Total balcon",
+    "Total terrazas", "Total garajes", "Tipo garaje",
+    "Total depositos", "Estado acabados", "Estado inmueble",
+    "Porteria", "Juegos niños", "Citofono",
+    "Total ascensores", "Salon comunal", "Bicicletero",
+    "Piscina", "Club house", "Zonas verdes",
+    "Parquedadero visitantes", "Arborización",
+    "Area privada", "Valor catastral", "Valor comercial",
+    "archivo_origen"
+]
+
+# 🔹 Campos numéricos
+CAMPOS_NUMERICOS = [
+    "Estrato", "Año construccion", "Vetustez", "Piso numero",
+    "Total Sala comedor", "Total habitaciones", "Total estudio",
+    "Total baños", "Total patios", "Total balcon",
+    "Total terrazas", "Total garajes", "Total depositos",
+    "Total ascensores",
+    "Area privada", "Valor catastral", "Valor comercial"
+]
+
+# 🔹 Campos booleanos
+CAMPOS_BOOLEANOS = [
+    "Porteria", "Juegos niños", "Citofono",
+    "Salon comunal", "Bicicletero", "Piscina",
+    "Club house", "Zonas verdes",
+    "Parquedadero visitantes", "Arborización"
+]
+
+
+# 🔹 1. Normalizar claves (por si la API devuelve variaciones)
+def normalizar_claves(datos):
+
+    claves_limpias = {}
+
+    for k, v in datos.items():
+        k_limpio = k.strip().lower()
+        claves_limpias[k_limpio] = v
+
+    return claves_limpias
+
+
+# 🔹 2. Mapear a estructura oficial
+def estructurar_datos(datos):
+
+    datos_norm = normalizar_claves(datos)
+
     resultado = {}
-    for i in range(0, len(matriz_datos), 2):
-        etiquetas = matriz_datos[i]
-        valores = matriz_datos[i+1] if i+1 < len(matriz_datos) else None
-        if valores:
-            for etiqueta, valor in zip(etiquetas, valores):
-                if etiqueta and etiqueta.strip():
-                    val_limpio = valor.strip() if valor else ""
-                    clave = etiqueta.replace("\n", " ").strip()
-                    resultado[clave] = val_limpio
+
+    for campo in CAMPOS:
+        campo_norm = campo.lower()
+
+        valor = datos_norm.get(campo_norm, None)
+        resultado[campo] = valor
+
     return resultado
-# Función para crear un DataFrame a partir de una lista de diccionarios
-def crear_dataframe(lista_dict):
-    return pd.DataFrame(lista_dict)
-# Función para limpiar y enriquecer el dataset final
-def limpiar_y_enriquecer_dataset(df):
-    df = df.copy()
 
-    # --- 1. CONVERSIÓN DE FECHAS (Prioridad para cálculos posteriores) ---
-    if 'Fecha avaluo' in df.columns:
-        df['Fecha avaluo'] = pd.to_datetime(df['Fecha avaluo'], dayfirst=True, errors='coerce')
 
-    # --- 2. LIMPIEZA NUMÉRICA ---
-    cols_numericas = ['Valor comercial', 'Valor catastral', 'Area total', 'Area privada', 'Estrato', 'Año construccion']
-    for col in cols_numericas:
-        if col in df.columns:
-            df[col] = (df[col].astype(str)
-                       .replace(r'[\$\.\s]', '', regex=True)
-                       .replace(['', 'nan', 'None'], np.nan))
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+# 🔹 3. Limpieza general
+def limpiar_texto(valor):
 
-    # --- 3. ESTANDARIZACIÓN DE TEXTO ---
-    cols_texto = ['Tipo inmueble', 'Barrio', 'Ciudad', 'Estado acabados']
-    for col in cols_texto:
-        if col in df.columns:
-            df[col] = df[col].str.upper().str.strip()
+    if valor is None:
+        return None
 
-    # --- 4. FEATURE ENGINEERING & DATA QUALITY ---
-    
-    # Valor por metro cuadrado (con manejo de errores)
-    if 'Valor comercial' in df.columns and 'Area total' in df.columns:
-        # Reemplazamos ceros por NaN para evitar divisiones infinitas
-        areas_limpias = df['Area total'].replace(0, np.nan)
-        df['valor_m2'] = df['Valor comercial'] / areas_limpias
+    valor = str(valor).strip()
 
-    # Validación lógica: Flag de error en áreas
-    if 'Area total' in df.columns and 'Area privada' in df.columns:
-        df['error_area'] = df['Area privada'] > df['Area total']
+    # eliminar espacios múltiples
+    valor = re.sub(r"\s+", " ", valor)
 
-    return df
+    return valor
+
+
+# 🔹 4. Limpieza específica (dinero)
+def limpiar_numero(valor):
+
+    if valor is None:
+        return None
+
+    valor = str(valor)
+
+    # quitar símbolos
+    valor = valor.replace("$", "").replace(".", "").replace(",", "")
+
+    # dejar solo números
+    valor = re.sub(r"[^\d]", "", valor)
+
+    return valor
+
+
+# 🔹 5. Convertir tipos
+def convertir_tipos(datos):
+
+    for campo in CAMPOS_NUMERICOS:
+
+        valor = datos.get(campo)
+
+        if valor is None or valor == "":
+            datos[campo] = None
+            continue
+
+        limpio = limpiar_numero(valor)
+
+        try:
+            datos[campo] = float(limpio)
+        except:
+            datos[campo] = None
+
+    return datos
+
+
+# 🔹 6. Convertir booleanos
+def convertir_booleanos(datos):
+
+    for campo in CAMPOS_BOOLEANOS:
+
+        valor = datos.get(campo)
+
+        if valor is None:
+            continue
+
+        valor_str = str(valor).lower()
+
+        if valor_str in ["1", "si", "sí", "true"]:
+            datos[campo] = 1
+        else:
+            datos[campo] = 0
+
+    return datos
+
+
+# 🔹 7. Limpieza final
+def limpiar_datos(datos):
+
+    for k, v in datos.items():
+
+        if k not in CAMPOS_NUMERICOS:
+            datos[k] = limpiar_texto(v)
+
+    return datos
+
+
+# 🔹 FUNCIÓN PRINCIPAL
+def transformar_datos(datos_raw, archivo_origen):
+
+    datos = estructurar_datos(datos_raw)
+
+    datos = limpiar_datos(datos)
+
+    datos = convertir_tipos(datos)
+
+    datos = convertir_booleanos(datos)
+
+    # agregar archivo origen
+    datos["archivo_origen"] = archivo_origen
+
+    return datos

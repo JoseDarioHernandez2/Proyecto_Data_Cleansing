@@ -1,94 +1,98 @@
 import os
 import pandas as pd
-from ETL.Extract import extraer_datos_pdf
-from ETL.Transform import transformar_a_diccionario, crear_dataframe, limpiar_y_enriquecer_dataset
+import logging
+from datetime import datetime
 
-def normalizar_id(val):
-    """
-    Limpia el ID para evitar duplicados por formato (científico, decimales, etc.)
-    """
-    if val is None:
-        return ""
-    return str(val).strip().replace('.0', '')
+# Importar tus módulos
+from extract_ai_api import (
+    extraer_pdf_con_api,
+    obtener_archivos_procesados,
+    obtener_pdfs_nuevos
+)
 
-def ejecutar_proceso():
-    # 1. CONFIGURACIÓN DE RUTAS
-    ruta_entrada = "data/pdf_originales"
-    ruta_salida = "data/data_procesada/Dataset_avaluos_final.xlsx"
-    
-    df_existente = pd.DataFrame()
-    ids_procesados = set()
-    
-    # 2. CARGAR DATOS PREVIOS
-    if os.path.exists(ruta_salida):
-        try:
-            df_existente = pd.read_excel(ruta_salida)
-            if 'ID avaluo' in df_existente.columns:
-                ids_procesados = set(
-                    df_existente['ID avaluo'].apply(normalizar_id).unique()
-                )
-                print(f"[*] Registros previos en Excel: {len(ids_procesados)}")
-        except Exception as e:
-            print(f"[!] Aviso: No se pudo leer el archivo previo: {e}")
+from transform import transformar_datos
 
-    # 3. ESCANEAR CARPETA DE PDFS
-    if not os.path.exists(ruta_entrada):
-        print(f"[!] Error: La carpeta {ruta_entrada} no existe.")
-        return
 
-    archivos = [f for f in os.listdir(ruta_entrada) if f.lower().endswith('.pdf')]
-    nuevos_datos = []
+# 🔹 CONFIGURACIÓN DE RUTAS
+RUTA_PDFS = "data/pdf_originales"
+RUTA_DATASET = "data/data_procesada/dataset_avaluos_final.xlsx"
+RUTA_LOGS = "logs"
 
-    print(f"[*] Escaneando {len(archivos)} archivos...")
+os.makedirs(RUTA_LOGS, exist_ok=True)
 
-    for archivo in archivos:
-        ruta_completa = os.path.join(ruta_entrada, archivo)
-        matriz = extraer_datos_pdf(ruta_completa)
-        
-        if matriz:
-            diccionario = transformar_a_diccionario(matriz)
-            id_actual = normalizar_id(diccionario.get('ID avaluo'))
-            
-            # Validación de duplicados y existencia de ID
-            if not id_actual:
-                print(f"[?] Saltando {archivo}: Sin ID válido.")
-                continue
-                
-            if id_actual in ids_procesados:
-                # Opcional: print(f"[-] Saltando {archivo}: Ya existe.")
-                continue
-            
-            print(f"[+] Extrayendo: {archivo} (ID: {id_actual})")
-            nuevos_datos.append(diccionario)
-            ids_procesados.add(id_actual)
-        else:
-            print(f"[!] Error en extracción: {archivo}")
+# 🔹 CONFIGURAR LOGS
+log_file = os.path.join(
+    RUTA_LOGS,
+    f"proceso_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+)
 
-    # 4. CONSOLIDACIÓN, LIMPIEZA Y GUARDADO
-    if nuevos_datos or not df_existente.empty:
-        # Unir nuevos con existentes
-        if nuevos_datos:
-            df_nuevos = crear_dataframe(nuevos_datos)
-            df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
-        else:
-            df_final = df_existente
-            
-        # APLICAR LIMPIEZA PROFUNDA (Transform.py)
-        print("[*] Aplicando limpieza profunda y reglas de negocio...")
-        df_final = limpiar_y_enriquecer_dataset(df_final)
-        
-        # Guardar resultado
-        os.makedirs(os.path.dirname(ruta_salida), exist_ok=True)
-        with pd.ExcelWriter(ruta_salida, engine='openpyxl') as writer:
-            df_final.to_excel(writer, index=False)
-            
-        print(f"\n==========================================")
-        print(f"PROCESO TERMINADO")
-        print(f"Nuevos registros: {len(nuevos_datos)}")
-        print(f"Total en Dataset: {len(df_final)}")
-        print(f"==========================================")
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+# 🔹 GUARDAR DATOS
+def guardar_datos(datos, ruta):
+
+    df_nuevo = pd.DataFrame([datos])
+
+    if os.path.exists(ruta):
+        df_existente = pd.read_excel(ruta)
+        df_final = pd.concat([df_existente, df_nuevo], ignore_index=True)
     else:
-        print("\n[i] No hay datos para procesar.")
+        df_final = df_nuevo
 
+    df_final.to_excel(ruta, index=False)
+
+
+# 🔹 PROCESO PRINCIPAL
+def main():
+
+    logging.info("Inicio del proceso")
+
+    try:
+        procesados = obtener_archivos_procesados(RUTA_DATASET)
+        nuevos_pdfs = obtener_pdfs_nuevos(RUTA_PDFS, procesados)
+
+        if not nuevos_pdfs:
+            logging.info("No hay PDFs nuevos para procesar")
+            print("✔ Todo está actualizado")
+            return
+
+        logging.info(f"{len(nuevos_pdfs)} PDFs nuevos encontrados")
+
+        for archivo in nuevos_pdfs:
+
+            ruta_pdf = os.path.join(RUTA_PDFS, archivo)
+
+            try:
+                logging.info(f"Procesando: {archivo}")
+
+                # 🔹 EXTRACT
+                datos_raw = extraer_pdf_con_api(ruta_pdf)
+
+                # 🔹 TRANSFORM
+                datos_limpios = transformar_datos(datos_raw, archivo)
+
+                # 🔹 LOAD
+                guardar_datos(datos_limpios, RUTA_DATASET)
+
+                logging.info(f"Procesado correctamente: {archivo}")
+                print(f"✔ {archivo} procesado")
+
+            except Exception as e:
+                logging.error(f"Error procesando {archivo}: {str(e)}")
+                print(f"✖ Error en {archivo}")
+
+        logging.info("Proceso finalizado")
+
+    except Exception as e:
+        logging.critical(f"Error crítico: {str(e)}")
+        print("✖ Error crítico en el pipeline")
+
+
+# 🔹 EJECUCIÓN
 if __name__ == "__main__":
-    ejecutar_proceso()
+    main()

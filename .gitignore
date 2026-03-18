@@ -1,26 +1,45 @@
+# =========== General ============
+# ya se ajusto para ocultar achivos especificos y KEYs.
+# ================================
+
 # === Python & Entornos ===
 __pycache__/
 *.py[cod]
 *$py.class
+
 .venv/
 venv/
-poetry.lock
-# Nota: poetry.lock usualmente se sube, pero si quieres 
-# que otros usen estrictamente su Conda, puedes ignorarlo.
+env/
 
-# === Datos (Privacidad y Cómputo) ===
-# Ignoramos todo el contenido de data para no subir archivos pesados o sensibles
+# === Datos ===
+# Permitir datos importantes
+!data/procesada/
+!data/pdf_originales/
 
+# Opcional: ignorar basura dentro de data
+data/**/*.tmp
+data/**/*.log
 
-# Pero permitimos que las carpetas existan en el repo (opcional)
-!data/.gitkeep
+# Ocultar todo en cuadernos
+cuadernos/*
 
-# === Jupyter Notebooks ===
-cuadernos/.ipynb_checkpoints/
+# Permitir el notebook específico
+!cuadernos/metodologia.ipynb
 
-# === Configuración y Secretos ===
+# === Secretos ===
 .env
+.env.*
+*.env
+
+# === Config local ===
 .vscode/
+.idea/
 poetry.toml
 
-# === Archivos de salida comunes ===
+# === Outputs ===
+*.log
+*.out
+
+# === Sistema ===
+.DS_Store
+Thumbs.db
