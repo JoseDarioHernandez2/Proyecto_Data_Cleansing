@@ -1,128 +1,158 @@
 import os
 import pandas as pd
 import logging
+import joblib  # 🔹 Nueva: Para cargar el modelo .pkl
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
 
-# 🔹 Módulos del proyecto
-from Extract_api import (
-    extraer_pdf_con_api,
-    obtener_archivos_procesados,
-    obtener_pdfs_nuevos
-)
-
-from Transform import transformar_datos
+# 🔹 Importaciones desde la carpeta ETL
+from ETL.Extract_api import ProcesadorAvaluos
+from ETL.Transform import transformar_datos
 from validate import validar_datos
+from ETL.Transform_2 import imputar_datos_globales
 
+# 1. CARGAR VARIABLES DE ENTORNO
+load_dotenv()
+API_KEY = os.getenv("GEMINI_API_KEY")
 
-# 🔹 CONFIGURACIÓN DE RUTAS
-RUTA_PDFS = "data/pdf_originales"
-RUTA_DATASET = "data/data_procesada/dataset_avaluos_final.xlsx"
-RUTA_LOGS = "logs"
+# 2. CONFIGURACIÓN DE RUTAS
+RUTA_RAW = Path("data/data_extraida/Base_Datos_Avaluos.xlsx")
+RUTA_FINAL = Path("data/data_procesada/dataset_avaluos_final.xlsx")
+RUTA_SCALER = Path("modelos\escalador.pkl") 
+RUTA_PKL = RUTA_FINAL.with_suffix('.pkl')
+RUTA_MODELO = Path("modelos\modelo_v1.pkl") # 🔹 Ruta de tu modelo entrenado
 
-os.makedirs(RUTA_LOGS, exist_ok=True)
+# Asegurar carpetas
+os.makedirs("logs", exist_ok=True)
+os.makedirs("data/data_procesada", exist_ok=True)
 
-
-# 🔹 CONFIGURAR LOGS
-log_file = os.path.join(
-    RUTA_LOGS,
-    f"proceso_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-)
-
+# Configurar Logging
 logging.basicConfig(
-    filename=log_file,
+    filename=f"logs/pipeline_{datetime.now().strftime('%Y%m%d')}.log",
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    encoding="utf-8"
 )
+# =================================================
+# ==== FUNCIONES DE TRANSFORMACIÓN ADICIONALES ====
+# =================================================
 
-
-# 🔹 PROCESO PRINCIPAL
-def main():
-
-    logging.info("Inicio del proceso")
-
+# Definimos función de predicción de ML (Paso 7)
+def realizar_predicciones_ia(df):
     try:
-        # 🔹 Identificar PDFs nuevos
-        procesados = obtener_archivos_procesados(RUTA_DATASET)
-        nuevos_pdfs = obtener_pdfs_nuevos(RUTA_PDFS, procesados)
+        print("🔮 [ML] Aplicando Scaler y generando valuaciones...")
+        modelo = joblib.load(RUTA_MODELO)
+        scaler = joblib.load(RUTA_SCALER) # ⬅️ CARGAR EL ESCALADOR
+        
+        features_modelo = [
+            'Area total', 'Estrato', 'Total habitaciones', 'Total baños', 'Total garajes', 
+            'Vetustez', 'Piso numero', 'Ciudad_BOGOTA D.C.', 'Ciudad_BOGOTÁ', 
+            'Ciudad_MEDELLÍN', 'Ciudad_TOCANCIPÁ', 'Tipo inmueble_APARTAMENTO', 
+            'Tipo inmueble_CASA', 'Estado acabados_BUENO', 
+            'Estado acabados_EXCELENTE', 'Estado acabados_REGULAR'
+        ]
 
-        if not nuevos_pdfs:
-            logging.info("No hay PDFs nuevos para procesar")
-            print("✔ Todo está actualizado")
-            return
+        # 1. Preparar Dummies y alinear columnas
+        df_prep = pd.get_dummies(df, columns=['Ciudad', 'Tipo inmueble', 'Estado acabados'])
+        for col in features_modelo:
+            if col not in df_prep.columns:
+                df_prep[col] = 0
+        
+        X = df_prep[features_modelo].fillna(0)
 
-        logging.info(f"{len(nuevos_pdfs)} PDFs nuevos encontrados")
+        # 2. ⚡ EL PASO CRÍTICO: Escalar los datos antes de predecir
+        X_scaled = scaler.transform(X) # ⬅️ Esto convierte 120m2 en el valor decimal que el modelo entiende
 
-        resultados = []
+        # 3. Predecir
+        predicciones = modelo.predict(X_scaled)
+        
+        # 4. Si usaste logaritmos en el entrenamiento, descomenta la siguiente línea:
+        # import numpy as np
+        # predicciones = np.exp(predicciones)
 
-        for archivo in nuevos_pdfs:
-
-            ruta_pdf = os.path.join(RUTA_PDFS, archivo)
-
-            try:
-                logging.info(f"Iniciando procesamiento: {archivo}")
-
-                # 🔹 EXTRACT
-                datos_raw = extraer_pdf_con_api(ruta_pdf)
-
-                # 🔹 TRANSFORM
-                datos_limpios = transformar_datos(datos_raw, archivo)
-
-                # 🔹 VALIDATE
-                df_temp = pd.DataFrame([datos_limpios])
-                validar_datos(df_temp)
-
-                resultados.append(datos_limpios)
-
-                logging.info(
-                    f"{archivo} | OK | "
-                    f"Valor: {datos_limpios.get('Valor comercial')} | "
-                    f"Área: {datos_limpios.get('Area total')}"
-                )
-
-                print(f"✔ {archivo} procesado")
-
-            except Exception as e:
-                logging.error(f"Error en {archivo}: {str(e)}")
-                print(f"✖ Error en {archivo}")
-
-        # 🔹 LOAD (una sola escritura eficiente)
-        if resultados:
-
-            df_nuevo = pd.DataFrame(resultados)
-
-            if os.path.exists(RUTA_DATASET):
-                df_existente = pd.read_excel(RUTA_DATASET)
-                df_final = pd.concat([df_existente, df_nuevo], ignore_index=True)
-            else:
-                df_final = df_nuevo
-
-            df_final.to_excel(RUTA_DATASET, index=False)
-
-            logging.info(f"Datos guardados correctamente. Total nuevos registros: {len(df_nuevo)}")
-
-        logging.info("Proceso finalizado correctamente")
+        df['Valor Predicho IA'] = predicciones
+        
+        # Calcular Desviación
+        df['Desviacion %'] = ((df['Valor comercial'] - df['Valor Predicho IA']) / df['Valor Predicho IA']) * 100
+        
+        print(f"✅ ¡POR FIN! Predicciones coherentes generadas.")
 
     except Exception as e:
-        logging.critical(f"Error crítico en el pipeline: {str(e)}")
-        print("✖ Error crítico en el pipeline")
+        print(f"❌ Error en el Scaler o Modelo: {e}")
+        
+    return df
 
+def imputar_variables_categoricas(df):
+    """Imputa por moda: Nombre edificio, Barrio, Tipo garaje."""
+    columnas_a_imputar = ["Nombre edificio", "Barrio", "Tipo garaje"]
+    print("🧠 Iniciando imputación por moda...")
+    for col in columnas_a_imputar:
+        if col in df.columns:
+            df[col] = df[col].replace(["SIN INFORMACION", "0", 0, "NAN", "NONE"], pd.NA)
+            moda_serie = df[col].dropna().mode()
+            if not moda_serie.empty:
+                moda_valor = moda_serie[0]
+                df[col] = df[col].fillna(moda_valor)
+                logging.info(f"Imputación: Columna '{col}' completada con moda: {moda_valor}")
+                print(f"   ✨ {col}: Imputado con '{moda_valor}'")
+            else:
+                df[col] = df[col].fillna("SIN INFORMACION")
+    return df
 
-# 🔹 EJECUCIÓN
+def main():
+    print("🚀 INICIANDO PIPELINE CON VARIABLES DE ENTORNO...")
+
+    if not API_KEY:
+        print("❌ ERROR: No se encontró GEMINI_API_KEY en el archivo .env")
+        return
+
+    try:
+        # --- PASO 1: EXTRACT ---
+        procesador = ProcesadorAvaluos(api_key=API_KEY)
+        print("📥 Extrayendo PDFs...")
+        procesador.iniciar_procesamiento_lote()
+
+        # --- PASO 2: LOAD RAW ---
+        if not RUTA_RAW.exists():
+            print("⚠️ No hay datos RAW para procesar.")
+            return
+        df_raw = pd.read_excel(RUTA_RAW)
+
+        # --- PASO 3: TRANSFORM (Fila por fila) ---
+        print(f"🛠️ Limpiando y formateando {len(df_raw)} registros...")
+        registros_limpios = []
+        for _, fila in df_raw.iterrows():
+            datos_dict = fila.to_dict()
+            nombre = datos_dict.get("archivo_origen", "S/N")
+            datos_limpios = transformar_datos(datos_dict, nombre)
+            registros_limpios.append(datos_limpios)
+        df_final = pd.DataFrame(registros_limpios)
+
+        # --- PASO 4: IMPUTACIÓN POR MODA (Global) ---
+        df_final = imputar_variables_categoricas(df_final)
+
+        # --- PASO 5: IMPUTACIÓN DE ÁREAS (Transform_2) ---
+        df_final = imputar_datos_globales(df_final)
+
+        # --- PASO 6: VALIDATE ---
+        print("🔍 Validando consistencia final...")
+        validar_datos(df_final)
+
+        # --- 🚀 PASO 7: PREDICCIÓN DE Modelo ML (NUEVO) ---
+        df_final = realizar_predicciones_ia(df_final)
+        
+        # --- GUARDADO FINAL ---
+        df_final.to_excel(RUTA_FINAL, index=False)
+        df_final.to_pickle(RUTA_PKL)
+
+        print(f"✅ Pipeline completado con éxito!")
+        print(f"📊 Excel con predicción valor comercial guardado en: {RUTA_FINAL}")
+        print(f"📦 Pickle guardado en: {RUTA_PKL}")
+
+    except Exception as e:
+        print(f"❌ Error crítico: {e}")
+        logging.error(f"Error: {e}", exc_info=True)
+
 if __name__ == "__main__":
     main()
-
-# --- IGNORE ---
-# Este código es el punto de entrada del pipeline ETL. Se encarga de:
-# 1. Configurar rutas y logging.
-# 2. Identificar qué PDFs son nuevos y necesitan ser procesados.
-# 3. Por cada PDF nuevo, ejecutar las etapas de Extract, Transform y Validate.
-# 4. Al final, guardar todos los nuevos registros en un solo paso para optimizar
-#    la escritura en disco.
-# 5. Manejar errores de forma robusta y registrar toda la actividad en logs detall
-#    para facilitar la depuración y el monitoreo del proceso.
-
-# Para ejecutar este script, asegúrate de tener las dependencias instaladas y el 
-# archivo .env configurado con las variables API_URL y API_KEY. Luego, puedes correrlo con:
-# ============================
-# ==== poetry run main.py ====
-# ============================

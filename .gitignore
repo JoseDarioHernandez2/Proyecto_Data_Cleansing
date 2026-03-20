@@ -13,6 +13,7 @@ env/
 
 # === Datos ===
 # Permitir datos importantes
+!data/extraida/
 !data/procesada/
 !data/pdf_originales/
 

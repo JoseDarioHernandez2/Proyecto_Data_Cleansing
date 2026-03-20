@@ -1,260 +1,150 @@
 import re
-
-# 🔹 Estructura oficial del dataset
-CAMPOS = [
-    "Entidad avaluadora", "ID avaluo", "Perito",
-    "Nombre solicitante", "ID solicitante", "Fecha avaluo",
-    "Departamento", "Ciudad", "Codigo DANE", "Direccion",
-    "Nombre edificio", "Barrio", "Estrato", "Tipo inmueble",
-    "Año construccion", "Vetustez", "Piso numero",
-    "Total Sala comedor", "Total habitaciones", "Total estudio",
-    "Total baños", "Total patios", "Total balcon",
-    "Total terrazas", "Total garajes", "Tipo garaje",
-    "Total depositos", "Estado acabados", "Estado inmueble",
-    "Porteria", "Juegos niños", "Citofono",
-    "Total ascensores", "Salon comunal", "Bicicletero",
-    "Piscina", "Club house", "Zonas verdes",
-    "Parquedadero visitantes", "Arborización",
-    "Area privada", "Valor catastral", "Valor comercial",
-    "archivo_origen"
-]
-
-# 🔹 Campos numéricos
-CAMPOS_NUMERICOS = [
-    "Estrato", "Año construccion", "Vetustez", "Piso numero",
-    "Total Sala comedor", "Total habitaciones", "Total estudio",
-    "Total baños", "Total patios", "Total balcon",
-    "Total terrazas", "Total garajes", "Total depositos",
-    "Total ascensores",
-    "Area privada", "Valor catastral", "Valor comercial"
-]
-
-# 🔹 Campos booleanos
-CAMPOS_BOOLEANOS = [
-    "Porteria", "Juegos niños", "Citofono",
-    "Salon comunal", "Bicicletero", "Piscina",
-    "Club house", "Zonas verdes",
-    "Parquedadero visitantes", "Arborización"
-]
-
-
-# 🔹 1. Normalizar claves (por si la API devuelve variaciones)
-def normalizar_claves(datos):
-
-    claves_limpias = {}
-
-    for k, v in datos.items():
-        k_limpio = k.strip().lower()
-        claves_limpias[k_limpio] = v
-
-    return claves_limpias
-
-
-# 🔹 2. Mapear a estructura oficial
-def estructurar_datos(datos):
-
-    datos_norm = normalizar_claves(datos)
-
-    resultado = {}
-
-    for campo in CAMPOS:
-        campo_norm = campo.lower()
-
-        valor = datos_norm.get(campo_norm, None)
-        resultado[campo] = valor
-
-    return resultado
-
-
-# 🔹 3. Limpieza general
-def limpiar_texto(valor):
-
-    if valor is None:
-        return None
-
-    valor = str(valor).strip()
-
-    # eliminar espacios múltiples
-    valor = re.sub(r"\s+", " ", valor)
-
-    return valor
-
-
-# 🔹 4. Limpieza específica (simbolo dinero)
-def limpiar_numero(valor):
-
-    if valor is None:
-        return None
-
-    valor = str(valor)
-
-    # quitar símbolos
-    valor = valor.replace("$", "").replace(".", "").replace(",", "")
-
-    # dejar solo números
-    valor = re.sub(r"[^\d]", "", valor)
-
-    return valor
-
-
-# 🔹 5. Convertir tipos
-def convertir_tipos(datos):
-
-    for campo in CAMPOS_NUMERICOS:
-
-        valor = datos.get(campo)
-
-        if valor is None or valor == "":
-            datos[campo] = None
-            continue
-
-        limpio = limpiar_numero(valor)
-
-        try:
-            datos[campo] = float(limpio)
-        except:
-            datos[campo] = None
-
-    return datos
-
-
-# 🔹 6. Convertir booleanos
-def convertir_booleanos(datos):
-
-    for campo in CAMPOS_BOOLEANOS:
-
-        valor = datos.get(campo)
-
-        if valor is None:
-            continue
-
-        valor_str = str(valor).lower()
-
-        if valor_str in ["1", "si", "sí", "true"]:
-            datos[campo] = 1
-        else:
-            datos[campo] = 0
-
-    return datos
-
-# 🔹 7. Feature Engineering
-def crear_features(datos):
-
-    # 🔹 1. Valor por metro cuadrado (SOLO Area total)
-    valor = datos.get("Valor comercial")
-    area = datos.get("Area total")
-
-    if isinstance(valor, (int, float)) and isinstance(area, (int, float)) and area > 0:
-        datos["Valor m2"] = valor / area
-    else:
-        datos["Valor m2"] = None
-
-    # 🔹 2. Áreas por inmueble
-    campos_areas = [
-        "Total Sala comedor",
-        "Total habitaciones",
-        "Total estudio",
-        "Total baños",
-        "Total patios",
-        "Total balcon",
-        "Total terrazas",
-        "Total garajes"
-    ]
-
-    suma = 0
-    hay_datos = False
-
-    for campo in campos_areas:
-        val = datos.get(campo)
-
-        if isinstance(val, (int, float)):
-            suma += val
-            hay_datos = True
-
-    datos["areas por inmueble"] = suma if hay_datos else None
-
-    return datos
-
-
-# 🔹 8. Limpieza final
-def limpiar_datos(datos):
-
-    for k, v in datos.items():
-
-        if k not in CAMPOS_NUMERICOS:
-            datos[k] = limpiar_texto(v)
-
-    return datos
-
-# 9. validación de datos
 import pandas as pd
+import numpy as np
+from datetime import datetime
 
+# Configuración de variables
+CAMPOS_NUMERICOS = [
+    "Estrato", "Año construccion", "Vetustez", "Piso numero", "Total Sala comedor",
+    "Total habitaciones", "Total estudio", "Total baños", "Total patios",
+    "Total balcon", "Total terrazas", "Total garajes", "Total depositos",
+    "Total ascensores", "Area total", "Area privada", "Valor catastral", "Valor comercial"
+]
 
-def validar_datos(df: pd.DataFrame) -> bool:
-    """
-    Valida la calidad de los datos transformados antes de guardarlos.
-    Lanza errores si encuentra inconsistencias críticas.
-    """
+COLUMNAS_DICOTOMICAS = [
+    "Porteria", "Juegos niños", "Citofono", "Total ascensores", "Salon comunal", 
+    "Bicicletero", "Piscina", "Club house", "Zonas verdes", 
+    "Parqueadero visitantes", "Arborización"
+]
 
-    if df is None or df.empty:
-        raise ValueError("El DataFrame está vacío o es None")
+COLUMNAS_PARA_SUMAR_ZONAS = [
+    "Total Sala comedor", "Total habitaciones", "Total estudio", "Total baños",
+    "Total patios", "Total balcon", "Total terrazas", "Total garajes", "Total depositos"
+]
 
-    # 🔹 Columnas esperadas (ajústalas según tu Transform)
-    columnas_obligatorias = [
-        "Valor comercial",
-        "Area total",
-        "Estrato",
-        "Valor m2"
-    ]
+def limpiar_numero(valor):
+    """Limpia strings numéricos y asegura que el valor sea float inicial."""
+    if pd.isna(valor) or str(valor).strip().lower() in ["nan", "none", "", "n/a", "no encontrado"]:
+        return 0.0
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    
+    texto = str(valor).strip().replace("$", "").replace(" ", "")
+    # Manejo de separadores: 1.234.567,89 -> 1234567.89
+    if "," in texto and "." in texto:
+        if texto.rfind(",") > texto.rfind("."): # Caso europeo/latino: . mil , decimal
+            texto = texto.replace(".", "").replace(",", ".")
+        else: # Caso gringo: , mil . decimal
+            texto = texto.replace(",", "")
+    elif "," in texto:
+        texto = texto.replace(",", ".")
+        
+    limpio = re.sub(r"[^\d.]", "", texto)
+    try:
+        return float(limpio) if limpio else 0.0
+    except:
+        return 0.0
 
-    for col in columnas_obligatorias:
-        if col not in df.columns:
-            raise ValueError(f"Falta la columna obligatoria: {col}")
+def normalizar_dicotomica(valor):
+    """Convierte SI/NO/NO ENCONTRADO/Números a 0 o 1."""
+    v = str(valor).strip().upper()
+    if v in ["SI", "1", "1.0", "EXISTE", "CONFIRMADO"]:
+        return 1
+    return 0
 
-    # 🔹 Validaciones de nulos
-    if df["Valor comercial"].isnull().any():
-        raise ValueError("Hay valores nulos en 'Valor comercial'")
+def homologar_tipo_inmueble(valor):
+    v = str(valor).strip().upper()
+    if any(x in v for x in ["APTO", "APARTAMENTO", "DEPARTAMENTO"]):
+        return "APARTAMENTO"
+    return "CASA"
 
-    if df["Area total"].isnull().any():
-        raise ValueError("Hay valores nulos en 'Area total'")
+def homologar_estados(valor):
+    """Para Estado acabados y Estado inmueble."""
+    v = str(valor).strip().upper()
+    if "EXCELENTE" in v: return "EXCELENTE"
+    if "REGULAR" in v: return "REGULAR"
+    return "BUENO" # Default para BUENO, USADA, BUEN ESTADO, etc.
 
-    # 🔹 Validaciones de rango lógico
-    if (df["Valor comercial"] <= 0).any():
-        raise ValueError("Hay valores <= 0 en 'Valor comercial'")
+def limpiar_fecha(fecha_raw):
+    fecha_str = str(fecha_raw).strip().lower()
+    if fecha_str in ["nan", "none", "", "n/a", "no encontrado", "0"]:
+        return "SIN INFORMACION"
+    meses = {
+        "enero": "01", "febrero": "02", "marzo": "03", "abril": "04", 
+        "mayo": "05", "junio": "06", "julio": "07", "agosto": "08", 
+        "septiembre": "09", "octubre": "10", "noviembre": "11", "diciembre": "12"
+    }
+    try:
+        for mes_nombre, mes_num in meses.items():
+            if mes_nombre in fecha_str:
+                fecha_str = fecha_str.replace(mes_nombre, mes_num).replace(" de ", "-")
+        fecha_str = fecha_str.replace("/", "-").replace(".", "-").replace(" ", "-")
+        dt = pd.to_datetime(fecha_str, dayfirst=True, errors='coerce')
+        return dt.strftime('%d-%m-%Y') if not pd.isna(dt) else "SIN INFORMACION"
+    except:
+        return "SIN INFORMACION"
 
-    if (df["Area total"] <= 0).any():
-        raise ValueError("Hay valores <= 0 en 'Area total'")
+def corregir_coherencia_garajes(total_garajes, tipo_garaje_raw):
+    total = float(total_garajes)
+    tipo_raw = str(tipo_garaje_raw).upper()
+    if total == 0: return 0
+    if any(x in tipo_raw for x in ["CUBIERTO", "PRIVADO"]): return 1
+    if any(x in tipo_raw for x in ["DESCUBIERTO", "LINEAL", "COMUN"]): return 2
+    return 1
 
-    if (df["valor_m2"] <= 0).any():
-        raise ValueError("Hay valores <= 0 en 'valor_m2'")
+# =================================================
+# ==== FUNCIÓN PRINCIPAL DE TRANSFORMACIÓN =======
+# =================================================
 
-    # 🔹 Estrato (valores típicos en Colombia: 1–6)
-    if df["Estrato"].notnull().any():
-        estratos_invalidos = df[
-            ~df["Estrato"].isin([1, 2, 3, 4, 5, 6])
-        ]
+def transformar_datos(datos_dict, archivo_origen):
+    df = pd.DataFrame([datos_dict])
+    df.columns = [str(c).strip() for c in df.columns]
+    
+    # 1. Procesar Numéricos Iniciales
+    for col in CAMPOS_NUMERICOS:
+        val = df[col].iloc[0] if col in df.columns else 0.0
+        df[col] = limpiar_numero(val)
 
-        if not estratos_invalidos.empty:
-            raise ValueError("Hay valores inválidos en 'Estrato'")
+    # 2. Homologar Tipo Inmueble (Punto 1)
+    if "Tipo inmueble" in df.columns:
+        df["Tipo inmueble"] = df["Tipo inmueble"].apply(homologar_tipo_inmueble)
 
-    return True
+    # 3. Homologar Estados (Puntos 2 y 3)
+    for col in ["Estado acabados", "Estado inmueble"]:
+        if col in df.columns:
+            df[col] = df[col].apply(homologar_estados)
 
+    # 4. Normalizar Dicotómicas (Punto 4)
+    for col in COLUMNAS_DICOTOMICAS:
+        if col in df.columns:
+            df[col] = df[col].apply(normalizar_dicotomica)
 
-# 🔹 FUNCIÓN PRINCIPAL
-def transformar_datos(datos_raw, archivo_origen):
-    # El orden de las funciones
-    datos = estructurar_datos(datos_raw)
-    # datos = normalizar_claves(datos_raw) # ya se hace dentro de estructurar_datos
-    datos = limpiar_datos(datos)
-    # convertir tipos antes de crear features, porque algunas features dependen de los tipos numéricos
-    datos = convertir_tipos(datos)
-    # convertir booleanos después de convertir tipos, para evitar conflictos
-    datos = convertir_booleanos(datos) 
-    # 🔥 Feature Engineering
-    datos = crear_features(datos)
-    # 🔥 Validación de datos
-    validar_datos(pd.DataFrame([datos]))
-    # agregar archivo origen
-    datos["archivo_origen"] = archivo_origen
+    # 5. Estandarizar Valor Comercial a ENTERO (Punto 5)
+    # Se redondea para no perder decimales por truncamiento y luego se pasa a int
+    df["Valor comercial"] = df["Valor comercial"].round().astype(int)
 
-    return datos
+    # 6. Reglas de Negocio (Garajes y Fechas)
+    total_g = df["Total garajes"].iloc[0]
+    tipo_g_raw = df["Tipo garaje"].iloc[0] if "Tipo garaje" in df.columns else "SIN INFORMACION"
+    df["Tipo garaje"] = corregir_coherencia_garajes(total_g, tipo_g_raw)
+    
+    fecha_raw = df["Fecha avaluo"].iloc[0] if "Fecha avaluo" in df.columns else "SIN INFORMACION"
+    df["Fecha avaluo"] = limpiar_fecha(fecha_raw)
+
+    # 7. Sumar zonas
+    cols_suma = [c for c in COLUMNAS_PARA_SUMAR_ZONAS if c in df.columns]
+    df["numero de zonas inmueble"] = df[cols_suma].sum(axis=1)
+
+    # 8. Procesar Textos Restantes
+    cols_obj = df.select_dtypes(exclude=[np.number]).columns
+    for col in cols_obj:
+        if col == "Fecha avaluo": continue
+        df[col] = df[col].astype(str).str.strip().str.upper()
+        df[col] = df[col].replace(["NAN", "NONE", "N/A", "0", "NO ENCONTRADO"], "SIN INFORMACION")
+
+    # 9. Valor m2
+    area = df["Area total"].iloc[0] if df["Area total"].iloc[0] > 0 else df["Area privada"].iloc[0]
+    df["Valor m2"] = (df["Valor comercial"].iloc[0] / area) if area > 0 else 0.0
+    
+    df["archivo_origen"] = archivo_origen
+    return df.iloc[0].to_dict()
