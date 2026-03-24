@@ -1,21 +1,20 @@
 [tool.poetry]
 name = "proyecto-data-cleansing"
 version = "0.1.0"
-description = "Ambiente Datacleasing"
+description = "Dashboard Inmobiliario"
 authors = ["Jose Dario Hernandez <josedariohernandez2@gmail.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.12"
+python = "^3.11"
+streamlit = "^1.35.0"
 pandas = "^2.2.0"
 numpy = "^1.26.0"
-google-generativeai = "^0.8.6"
-openpyxl = "^3.1.5"
 plotly = "^6.0.0"
-joblib = "^1.5.3"
-scikit-learn = "1.8.0"
-streamlit = "^1.35.0"
-python-dotenv = "^1.0.1"
+openpyxl = "^3.1.0"
+joblib = "^1.3.0"
+scikit-learn = "^1.8.0"
+python-dotenv = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
