@@ -1,24 +1,22 @@
-[tool.poetry] # <--- ASEGÚRATE DE QUE DIGA [tool.poetry] Y NO SOLO [project]
+[tool.poetry]
 name = "proyecto-data-cleansing"
 version = "0.1.0"
 description = "Ambiente Datacleasing"
 authors = ["Jose Dario Hernandez <josedariohernandez2@gmail.com>"]
-package-mode = false  # <--- ESTA ES LA CLAVE PARA QUE NO BUSQUE LA CARPETA
+package-mode = false
 
-[tool.poetry.dependencies] # <--- ESTO TAMBIÉN DEBE IR BAJO ESTE ENCABEZADO
+[tool.poetry.dependencies]
 python = ">=3.12"
-pandas = "^2.0.0"
+pandas = "^2.2.0"
 numpy = "^1.26.0"
 google-generativeai = "^0.8.6"
 openpyxl = "^3.1.5"
 plotly = "^6.0.0"
 joblib = "^1.5.3"
-scikit-learn = "1.8.0" # Te recomiendo esta versión estable para evitar fallos
+scikit-learn = "1.8.0"
 streamlit = "^1.35.0"
+python-dotenv = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
