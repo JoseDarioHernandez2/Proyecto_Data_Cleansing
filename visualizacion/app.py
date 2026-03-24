@@ -82,7 +82,7 @@ with c3:
     fig_est.update_layout(xaxis=dict(type='category'))
     st.plotly_chart(fig_est, use_container_width=True)
 with c4:
-    st.subheader("💎 Valor Comercial por Estado (M COP)")
+    st.subheader("💎 Valor Comercial por Estado (COP)")
     fig_box = px.box(df, x='Estado acabados', y='Valor comercial M', color='Estado acabados', 
                     color_discrete_map={'EXCELENTE': '#93c5fd', 'BUENO': '#f87171', 'REGULAR': '#fbbf24'}, template="plotly_white")
     st.plotly_chart(fig_box, use_container_width=True)
@@ -92,7 +92,7 @@ st.divider()
 c5, c6 = st.columns([0.4, 0.6])
 
 with c5:
-    st.subheader("🍰 Composición Jerárquica")
+    st.subheader("🍰 Distribución segmentos")
     paleta_viva = ['#FFF4E0', '#FFCC33', '#FF8C00', '#E34234', '#B22222', '#7B0000']
     
     # Agrupamos los datos generados matemáticamente
@@ -114,7 +114,7 @@ with c6:
 
 # --- VALIDACIÓN CON LÍNEA PUNTEADA ---
 st.divider()
-st.subheader("🎯 Validación: Real vs Predicción IA")
+st.subheader("🎯 Validación: Real vs Predicción Modelo ML")
 fig_val = px.scatter(df, x='Valor comercial M', y='Valor Predicho IA M', color='Desviacion %', 
                      color_continuous_scale='RdYlGn_r', template="plotly_white")
 max_v = max(df['Valor comercial M'].max(), df['Valor Predicho IA M'].max())
@@ -152,7 +152,9 @@ if submitted:
         st.balloons()
     except Exception as e: st.error(f"Error: {e}")
     
-    
-    #==========================================================================
-    # ===== ejecuta con -> poetry run streamlit run visualizacion/app.py ======
     # =========================================================================
+    # =====                                                              ======
+    # ===== ejecuta con -> poetry run streamlit run visualizacion/app.py ======
+    # =====                                                              ======
+    # =========================================================================
+    
