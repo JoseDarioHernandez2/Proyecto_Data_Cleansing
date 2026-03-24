@@ -30,6 +30,10 @@ def load_data():
     
     df = pd.read_excel(path)
     
+    if 'Valor comercial M' not in df.columns:
+        # Creamos la columna con ceros para que las gráficas y métricas no den error
+        df['Valor comercial M'] = 0
+    
     # Conversión a millones
     df['Valor comercial M'] = df['Valor comercial'] / 1_000_000
     df['Valor Predicho IA M'] = df['Valor Predicho IA'] / 1_000_000
