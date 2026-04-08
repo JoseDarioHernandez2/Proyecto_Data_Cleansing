@@ -2,11 +2,11 @@ import subprocess
 import sys
 
 def run_task():
-    print("Running proyecto Data_Cleansing...")
+    print("Paso 1: Running proyecto Data_Cleansing...")
     # Ejecuta el main.py
     subprocess.run(["poetry", "run", "python", "main.py"], check=True)
     
-    print("Step 2: Starting Streamlit...")
+    print("Paso 2: Generamos visualizaciones en Streamlit...")
     # Ejecuta streamlit
     subprocess.run(["poetry", "run", "streamlit", "run", "visualizacion/app.py"])
 
