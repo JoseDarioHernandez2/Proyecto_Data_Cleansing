@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diccionario de Datos — Formulario de Avalúos</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e29;
+    --border: #252a38;
+    --accent: #4fffb0;
+    --accent2: #7b6cff;
+    --accent3: #ff6c6c;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --section-bg: #16192280;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #0d0f14ee;
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-badge {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #0d0f14;
+    font-size: 0.85rem;
+  }
+
+  .logo-text { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+  .logo-sub  { font-size: 0.72rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+
+  .meta-chips {
+    display: flex; gap: 0.6rem; align-items: center;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .chip.green { border-color: var(--accent); color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 73px);
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 2rem 1.5rem;
+    position: sticky;
+    top: 73px;
+    height: calc(100vh - 73px);
+    overflow-y: auto;
+  }
+
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .sidebar-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 1rem;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: 'Syne', sans-serif;
+    margin-bottom: 0.1rem;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--surface2); color: var(--accent); }
+
+  .nav-count {
+    float: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    background: var(--border);
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    color: var(--muted);
+  }
+
+  /* ── MAIN ── */
+  main {
+    padding: 2.5rem 3rem;
+    overflow-y: auto;
+  }
+
+  /* ── SEARCH ── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .search-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 1rem 0.7rem 2.75rem;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--accent2); }
+  .search-wrap input::placeholder { color: var(--muted); }
+
+  .search-icon {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .filter-group { display: flex; gap: 0.5rem; }
+
+  .filter-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .filter-btn:hover  { border-color: var(--text); color: var(--text); }
+  .filter-btn.active { border-color: var(--accent2); color: var(--accent2); background: #7b6cff15; }
+
+  /* ── SECTION ── */
+  .section-block {
+    margin-bottom: 3rem;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .section-name {
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .section-qty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* ── FIELD CARD ── */
+  .field-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 0.6rem;
+    display: grid;
+    grid-template-columns: 220px 1fr auto;
+    gap: 1rem;
+    align-items: start;
+    transition: border-color 0.15s;
+  }
+
+  .field-card:hover { border-color: #353a4f; }
+
+  .field-card.hidden { display: none; }
+
+  .field-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+    word-break: break-word;
+  }
+
+  .field-desc {
+    font-size: 0.83rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .field-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-end;
+  }
+
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .tag-type    { background: #7b6cff22; border: 1px solid #7b6cff55; color: var(--accent2); }
+  .tag-req     { background: #4fffb022; border: 1px solid #4fffb055; color: var(--accent); }
+  .tag-noreq   { background: #ff6c6c15; border: 1px solid #ff6c6c40; color: var(--accent3); }
+  .tag-editable{ background: #2a2e3d; border: 1px solid #353a4f; color: var(--muted); }
+
+  .field-extras {
+    grid-column: 2 / 4;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+  }
+
+  .extra-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    padding: 0.18rem 0.55rem;
+    background: var(--surface2);
+    border-radius: 4px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .obs-box {
+    grid-column: 1 / 4;
+    background: var(--surface2);
+    border-left: 2px solid var(--accent2);
+    border-radius: 0 6px 6px 0;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .len-box {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center;
+    padding: 4rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    display: none;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    padding: 1.2rem 1.6rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600; color: var(--text); }
+  .stat-lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .stat-val.green  { color: var(--accent);  }
+  .stat-val.purple { color: var(--accent2); }
+  .stat-val.red    { color: var(--accent3); }
+
+  /* ── SCROLLBAR MAIN ── */
+  main::-webkit-scrollbar { width: 6px; }
+  main::-webkit-scrollbar-track { background: transparent; }
+  main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { display: none; }
+    header { padding: 1rem 1.5rem; }
+    main { padding: 1.5rem; }
+    .field-card { grid-template-columns: 1fr; }
+    .field-meta { flex-direction: row; align-items: center; }
+    .obs-box, .field-extras { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-badge">DD</div>
+    <div>
+      <div class="logo-text">Diccionario de Datos</div>
+      <div class="logo-sub">FORMULARIO DE AVALÚOS · DATA CLEANSING</div>
+    </div>
+  </div>
+  <div class="meta-chips">
+    <span class="chip">v1.0</span>
+    <span class="chip">2025</span>
+    <span class="chip green">● Activo</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside>
+    <div class="sidebar-title">Secciones</div>
+    <button class="nav-item active" onclick="filterSection('all')">
+      Todas las secciones
+    </button>
+    <button class="nav-item" onclick="filterSection('perito')">
+      Información del Perito <span class="nav-count">1</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('solicitante')">
+      Info. Básica Solicitante <span class="nav-count">5</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('barrio')">
+      Información del Barrio <span class="nav-count">1</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('inmueble')">
+      Información del Inmueble <span class="nav-count">1</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('construccion')">
+      Info. Construcción <span class="nav-count">6</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('dependencias')">
+      Dependencias Inmueble <span class="nav-count">10</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('dotacion')">
+      Dotación Comunal <span class="nav-count">10</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('salubridad')">
+      Salubridad Ambiental <span class="nav-count">1</span>
+    </button>
+    <button class="nav-item" onclick="filterSection('liquidacion')">
+      Liquidación Avalúo <span class="nav-count">4</span>
+    </button>
+  </aside>
+
+  <main>
+
+    <div class="search-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar campo, tipo, descripción..." oninput="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <button class="filter-btn active" onclick="setFilter('all', this)">Todos</button>
+        <button class="filter-btn" onclick="setFilter('obligatorio', this)">Obligatorio</button>
+        <button class="filter-btn" onclick="setFilter('editable', this)">Editable</button>
+        <button class="filter-btn" onclick="setFilter('dominio', this)">Con dominio</button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-val" id="totalFields">39</span><span class="stat-lbl">Campos totales</span></div>
+      <div class="stat"><span class="stat-val green" id="reqFields">36</span><span class="stat-lbl">Obligatorios</span></div>
+      <div class="stat"><span class="stat-val purple" id="editFields">35</span><span class="stat-lbl">Editables</span></div>
+      <div class="stat"><span class="stat-val red" id="domFields">13</span><span class="stat-lbl">Con dominio</span></div>
+      <div class="stat"><span class="stat-val" id="secCount">9</span><span class="stat-lbl">Secciones</span></div>
+    </div>
+
+    <div id="empty" class="empty">Sin resultados para tu búsqueda.</div>
+
+    <!-- SECCIÓN: INFORMACIÓN DEL PERITO -->
+    <div class="section-block" data-section="perito">
+      <div class="section-header">
+        <div class="section-dot" style="background:#4fffb0"></div>
+        <span class="section-name">Información del Perito</span>
+        <span class="section-qty">1 campo</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Entidad_avaluadora</div>
+        <div>
+          <div class="field-desc">Nombre de la entidad avaluadora.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: INFORMACIÓN BÁSICA SOLICITANTE -->
+    <div class="section-block" data-section="solicitante">
+      <div class="section-header">
+        <div class="section-dot" style="background:#7b6cff"></div>
+        <span class="section-name">Información Básica Solicitante</span>
+        <span class="section-qty">5 campos</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="no" data-dominio="no">
+        <div class="field-name">Nombre_solicitante</div>
+        <div>
+          <div class="field-desc">Nombre del solicitante del avalúo.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">No editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="no" data-dominio="si">
+        <div class="field-name">Tipo_de_identificacion</div>
+        <div>
+          <div class="field-desc">Tipo de documento de identificación del solicitante.</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">No editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">CC</span>
+          <span class="extra-pill">CE</span>
+          <span class="extra-pill">NIT</span>
+          <span class="extra-pill">Otro</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="no" data-dominio="no">
+        <div class="field-name">N°_Identificacion</div>
+        <div>
+          <div class="field-desc">Número de cédula / identificación del cliente.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">No editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Fecha_avaluo</div>
+        <div>
+          <div class="field-desc">Fecha en que se realizó el avalúo.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Fecha DD/MM/AAAA</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Departamento</div>
+        <div>
+          <div class="field-desc">Nombre del departamento donde se encuentra la ciudad que ubica el inmueble objeto del avalúo.</div>
+          <div class="len-box">Referencia: tabla de departamentos</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: INFORMACIÓN DEL BARRIO -->
+    <div class="section-block" data-section="barrio">
+      <div class="section-header">
+        <div class="section-dot" style="background:#ff9f43"></div>
+        <span class="section-name">Información del Barrio</span>
+        <span class="section-qty">5 campos</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Ciudad</div>
+        <div>
+          <div class="field-desc">Ciudad donde se ubica el inmueble.</div>
+          <div class="len-box">Referencia: tabla de ciudades</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="no" data-dominio="no">
+        <div class="field-name">Codigo_Dane</div>
+        <div>
+          <div class="field-desc">Código DANE asociado al municipio. Valor predeterminado según ciudad seleccionada.</div>
+          <div class="len-box">Predeterminado (automático)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">No editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Direccion</div>
+        <div>
+          <div class="field-desc">Dirección del inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="obs-box">Dirección del inmueble objeto de avalúo.</div>
+      </div>
+
+      <div class="field-card" data-req="no" data-editable="si" data-dominio="no">
+        <div class="field-name">Nombre_edificio</div>
+        <div>
+          <div class="field-desc">Nombre del conjunto o edificio al que pertenece el inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-noreq">Opcional</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+        <div class="field-name">Estrato</div>
+        <div>
+          <div class="field-desc">Estrato socioeconómico del barrio donde se ubica el inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">1</span><span class="extra-pill">2</span>
+          <span class="extra-pill">3</span><span class="extra-pill">4</span>
+          <span class="extra-pill">5</span><span class="extra-pill">6</span>
+          <span class="extra-pill">Comercial</span><span class="extra-pill">Industrial</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: INFORMACIÓN DEL INMUEBLE -->
+    <div class="section-block" data-section="inmueble">
+      <div class="section-header">
+        <div class="section-dot" style="background:#54a0ff"></div>
+        <span class="section-name">Información del Inmueble</span>
+        <span class="section-qty">1 campo</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+        <div class="field-name">Tipo_inmueble</div>
+        <div>
+          <div class="field-desc">Categoría a la que pertenece el inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">Casa</span><span class="extra-pill">Apartamento</span>
+          <span class="extra-pill">Bodega</span><span class="extra-pill">Oficina</span>
+          <span class="extra-pill">Local</span><span class="extra-pill">Consultorio</span>
+          <span class="extra-pill">Casa Rural</span><span class="extra-pill">Lote Rural</span>
+          <span class="extra-pill">Otro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: INFORMACIÓN DE LA CONSTRUCCIÓN -->
+    <div class="section-block" data-section="construccion">
+      <div class="section-header">
+        <div class="section-dot" style="background:#ff6c6c"></div>
+        <span class="section-name">Información de la Construcción</span>
+        <span class="section-qty">6 campos</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Piso_numero</div>
+        <div>
+          <div class="field-desc">Número total de pisos del inmueble. Se cuenta desde planta baja sin incluir sótanos. Mezanines se cuentan como pisos.</div>
+          <div class="len-box">4 enteros positivos, 0 decimales</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Año_construccion</div>
+        <div>
+          <div class="field-desc">Año de construcción del inmueble.</div>
+          <div class="len-box">4 enteros, 0 decimales (AAAA)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico AAAA</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Vetustez</div>
+        <div>
+          <div class="field-desc">Vetustez del inmueble expresada en años.</div>
+          <div class="len-box">4 enteros, 0 decimales</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="obs-box">Valor expresado en años.</div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+        <div class="field-name">Estado_acabados</div>
+        <div>
+          <div class="field-desc">Estado de conservación del inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">Óptimo</span><span class="extra-pill">Bueno</span>
+          <span class="extra-pill">Regular</span><span class="extra-pill">Malo</span>
+          <span class="extra-pill">Demolición</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+        <div class="field-name">Estado_inmueble</div>
+        <div>
+          <div class="field-desc">Estado de la construcción del inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">Bueno</span><span class="extra-pill">Malo</span>
+        </div>
+        <div class="obs-box">Lista desplegable: Nueva o Usada.</div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Barrio</div>
+        <div>
+          <div class="field-desc">Nombre del barrio donde se ubica el inmueble.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: DEPENDENCIAS DEL INMUEBLE -->
+    <div class="section-block" data-section="dependencias">
+      <div class="section-header">
+        <div class="section-dot" style="background:#ffd32a"></div>
+        <span class="section-name">Dependencias del Inmueble</span>
+        <span class="section-qty">10 campos</span>
+      </div>
+
+      <!-- Generator pattern for dependencies -->
+      <script>
+        const deps = [
+          ['Sala_comedor','Sala'],
+          ['Total_estudio','Estudio'],
+          ['Total_baños','Baño Social'],
+          ['Total_depositos','Depósito'],
+          ['Total_habitaciones','Habitaciones'],
+          ['Total_patios','Patio Interior'],
+          ['Total_terrazas','Terraza'],
+          ['Total_balcon','Balcón'],
+          ['Total_garajes','Total de Garajes'],
+          ['Tipo_garaje','Cubierto'],
+        ];
+        document.write(deps.map(([n,d]) => `
+          <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+            <div class="field-name">${n}</div>
+            <div><div class="field-desc">${d}.</div><div class="len-box">15 dígitos (13 enteros, 2 decimales)</div></div>
+            <div class="field-meta">
+              <span class="tag tag-type">Numérico</span>
+              <span class="tag tag-req">Obligatorio</span>
+              <span class="tag tag-editable">Editable</span>
+            </div>
+          </div>`).join(''));
+      </script>
+    </div>
+
+    <!-- SECCIÓN: DOTACIÓN COMUNAL -->
+    <div class="section-block" data-section="dotacion">
+      <div class="section-header">
+        <div class="section-dot" style="background:#00d2d3"></div>
+        <span class="section-name">Dotación Comunal</span>
+        <span class="section-qty">10 campos</span>
+      </div>
+
+      <script>
+        const dotacion = [
+          ['Portería','Portería'],
+          ['Citófono','Citófono'],
+          ['Bicicletero','Bicicletero'],
+          ['Piscina','Piscina'],
+          ['Club_House','Club House'],
+          ['Parqueadero_visitantes','Parqueadero para visitantes'],
+          ['Juegos_Niños','Juegos Infantiles'],
+          ['Zonas_verdes','Zonas Verdes'],
+          ['Salón_Comunal','Salón Comunal'],
+          ['Total_ascensores','Ascensor'],
+        ];
+        document.write(dotacion.map(([n,d]) => `
+          <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+            <div class="field-name">${n}</div>
+            <div><div class="field-desc">${d}. Indica si el conjunto/edificio dispone de este servicio.</div><div class="len-box">Longitud máx: 250</div></div>
+            <div class="field-meta">
+              <span class="tag tag-type">Alfanumérico</span>
+              <span class="tag tag-req">Obligatorio</span>
+              <span class="tag tag-editable">Editable</span>
+            </div>
+            <div class="field-extras">
+              <span class="extra-pill">S</span><span class="extra-pill">N</span>
+            </div>
+            <div class="obs-box">Lista desplegable con opciones S (Sí) o N (No).</div>
+          </div>`).join(''));
+      </script>
+    </div>
+
+    <!-- SECCIÓN: CONDICIONES DE SALUBRIDAD -->
+    <div class="section-block" data-section="salubridad">
+      <div class="section-header">
+        <div class="section-dot" style="background:#5f27cd"></div>
+        <span class="section-name">Condiciones de Salubridad e Impacto Ambiental</span>
+        <span class="section-qty">1 campo</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="si">
+        <div class="field-name">Arborización</div>
+        <div>
+          <div class="field-desc">Indica si el entorno del inmueble cuenta con arborización.</div>
+          <div class="len-box">Longitud máx: 250</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Alfanumérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+        <div class="field-extras">
+          <span class="extra-pill">S</span><span class="extra-pill">N</span>
+        </div>
+        <div class="obs-box">Lista desplegable con opciones S (Sí) o N (No).</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: LIQUIDACIÓN AVALÚO -->
+    <div class="section-block" data-section="liquidacion">
+      <div class="section-header">
+        <div class="section-dot" style="background:#ee5a24"></div>
+        <span class="section-name">Liquidación Avalúo</span>
+        <span class="section-qty">4 campos</span>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">ÁREA_total_m2</div>
+        <div>
+          <div class="field-desc">Área total del inmueble en metros cuadrados.</div>
+          <div class="len-box">15 dígitos (10 enteros, 5 decimales)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">Área_privada</div>
+        <div>
+          <div class="field-desc">Área privada del inmueble en metros cuadrados.</div>
+          <div class="len-box">15 dígitos (10 enteros, 5 decimales)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="si" data-dominio="no">
+        <div class="field-name">valor_m2</div>
+        <div>
+          <div class="field-desc">Valor unitario por metro cuadrado del inmueble.</div>
+          <div class="len-box">15 dígitos (10 enteros, 5 decimales)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">Editable</span>
+        </div>
+      </div>
+
+      <div class="field-card" data-req="si" data-editable="no" data-dominio="no">
+        <div class="field-name">Valor_comercial</div>
+        <div>
+          <div class="field-desc">Valor total comercial del inmueble. Resultado del producto entre el área y el valor unitario por m².</div>
+          <div class="len-box">15 dígitos (10 enteros, 5 decimales)</div>
+        </div>
+        <div class="field-meta">
+          <span class="tag tag-type">Numérico</span>
+          <span class="tag tag-req">Obligatorio</span>
+          <span class="tag tag-editable">No editable</span>
+        </div>
+        <div class="obs-box">Calculado: ÁREA (m²) × VALOR UNITARIO (m²). Campo de solo lectura.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let activeSection = 'all';
+  let activeFilter  = 'all';
+
+  function filterSection(sec) {
+    activeSection = sec;
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    applyFilters();
+  }
+
+  function setFilter(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+
+    document.querySelectorAll('.section-block').forEach(sec => {
+      const secId = sec.dataset.section;
+      const secMatch = (activeSection === 'all' || secId === activeSection);
+      sec.style.display = secMatch ? '' : 'none';
+      if (!secMatch) return;
+
+      sec.querySelectorAll('.field-card').forEach(card => {
+        let show = true;
+        if (activeFilter === 'obligatorio' && card.dataset.req !== 'si') show = false;
+        if (activeFilter === 'editable'    && card.dataset.editable !== 'si') show = false;
+        if (activeFilter === 'dominio'     && card.dataset.dominio !== 'si') show = false;
+        if (q) {
+          const text = card.textContent.toLowerCase();
+          if (!text.includes(q)) show = false;
+        }
+        card.classList.toggle('hidden', !show);
+      });
+    });
+
+    const visible = document.querySelectorAll('.field-card:not(.hidden)').length;
+    document.getElementById('empty').style.display = visible === 0 ? 'block' : 'none';
+  }
+</script>
+</body>
+</html>
